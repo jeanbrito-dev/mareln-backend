@@ -48,7 +48,7 @@ O projeto foi pensado de forma modular desde o início. Cada funcionalidade vive
 
 ---
 
-## Stack
+## Stacks
 
 | Tecnologia | Uso |
 | --- | --- |
