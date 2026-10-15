@@ -17,8 +17,10 @@ Autenticação, gerenciamento de eventos, usuários, categorias e interações, 
 - [Começando](#começando)
 - [Execução local](#opção-1--execução-local)
 - [Execução com Docker](#opção-2--execução-com-docker)
+- [Build, imagem e container](#build-imagem-e-container)
 - [Persistência do banco](#persistência-do-banco-de-dados)
 - [Prisma e migrations](#prisma-e-migrations)
+- [Atualizando o backend](#atualizando-o-backend)
 - [Scripts](#scripts)
 - [Desenvolvimento](#desenvolvimento)
 
@@ -202,7 +204,7 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-> Ao utilizar `docker run --env-file .env`, mantenha os valores sem aspas para evitar problemas de interpretação da `DATABASE_URL`.
+> Ao utilizar `docker run --env-file .env`, mantenha os valores sem aspas.
 
 Dentro da rede Docker:
 
@@ -219,7 +221,7 @@ mareln-postgres
 | `JWT_EXPIRES_IN` | Tempo de expiração do access token |
 | `JWT_REFRESH_EXPIRES_IN` | Tempo de expiração do refresh token |
 
-> **Atenção:** nunca versione o arquivo `.env`. Em produção, utilize um `JWT_SECRET` longo, aleatório e exclusivo.
+> **Atenção:** nunca versione o arquivo `.env`.
 
 Recomenda-se manter um arquivo `.env.example`:
 
@@ -286,15 +288,13 @@ Não é necessário instalar PostgreSQL diretamente na máquina.
 
 ### 1. Criar a rede Docker
 
-Crie uma rede para permitir que o backend encontre o PostgreSQL:
-
 ```bash
 docker network create mareln-network
 ```
 
-Esse comando precisa ser executado apenas uma vez.
+A rede precisa ser criada apenas uma vez.
 
-Para visualizar as redes existentes:
+Para visualizar:
 
 ```bash
 docker network ls
@@ -304,13 +304,11 @@ docker network ls
 
 ### 2. Criar o volume do PostgreSQL
 
-Crie um volume para persistir os dados:
-
 ```bash
 docker volume create mareln-postgres-data
 ```
 
-Para visualizar os volumes:
+Para visualizar:
 
 ```bash
 docker volume ls
@@ -318,7 +316,7 @@ docker volume ls
 
 ---
 
-### 3. Subir o PostgreSQL
+### 3. Criar e iniciar o container do PostgreSQL
 
 #### PowerShell
 
@@ -363,25 +361,19 @@ Como apenas o backend precisa acessar o PostgreSQL, não é necessário publicar
 
 ### 4. Verificar o PostgreSQL
 
-Confira se o container está rodando:
-
 ```bash
 docker ps
 ```
 
-Veja os logs:
+Logs:
 
 ```bash
 docker logs mareln-postgres
 ```
 
-Quando o PostgreSQL estiver pronto, os logs devem indicar que o banco está aceitando conexões.
-
 ---
 
 ### 5. Configurar o `.env`
-
-Para execução totalmente em Docker:
 
 ```env
 DATABASE_URL=postgresql://mareln:1234@mareln-postgres:5432/mareln
@@ -396,25 +388,11 @@ Não utilize:
 DATABASE_URL=postgresql://mareln:1234@localhost:5432/mareln
 ```
 
-Nesse cenário.
-
-Dentro do container do backend:
-
-```text
-localhost
-```
-
-representa o próprio container NestJS.
-
-Para acessar o PostgreSQL, utilize:
-
-```text
-mareln-postgres
-```
+Dentro do container do backend, `localhost` representa o próprio container NestJS.
 
 ---
 
-### 6. Construir a imagem do backend
+### 6. Buildar a imagem do backend
 
 Na raiz do projeto:
 
@@ -422,41 +400,42 @@ Na raiz do projeto:
 docker build -t mareln-backend .
 ```
 
-O Docker utiliza o `Dockerfile` para gerar a imagem:
+Esse comando lê o `Dockerfile` e cria a imagem:
 
 ```text
 mareln-backend
 ```
 
-O fluxo de build é:
+Confira:
+
+```bash
+docker images
+```
+
+Exemplo:
 
 ```text
-Node.js
-   |
-   v
-Instala dependências
-   |
-   v
-Copia o projeto
-   |
-   v
-Gera Prisma Client
-   |
-   v
-Compila NestJS
-   |
-   v
-Imagem mareln-backend
+REPOSITORY        TAG       IMAGE ID       CREATED
+mareln-backend    latest    ...
 ```
 
 ---
 
-### 7. Executar o backend
+### 7. Criar e iniciar o container do backend
 
-Execute o backend conectado à mesma rede do PostgreSQL:
+Depois da imagem pronta:
 
 ```bash
 docker run -d --name mareln-api --network mareln-network --env-file .env -p 3000:3000 mareln-backend
+```
+
+Esse comando utiliza:
+
+```text
+imagem mareln-backend
+        |
+        v
+container mareln-api
 ```
 
 A API ficará disponível em:
@@ -465,47 +444,50 @@ A API ficará disponível em:
 http://localhost:3000
 ```
 
-O mapeamento:
+---
 
-```text
-3000:3000
+### 8. Verificar o backend
+
+```bash
+docker ps
 ```
 
-significa:
+Você deverá ver:
 
 ```text
-porta 3000 da máquina -> porta 3000 do container
+mareln-api
+mareln-postgres
+```
+
+Logs:
+
+```bash
+docker logs -f mareln-api
 ```
 
 ---
 
-### 8. Verificar a conexão com o banco
-
-Confira a `DATABASE_URL` recebida pelo container:
+### 9. Verificar a conexão com o banco
 
 ```bash
 docker exec mareln-api printenv DATABASE_URL
 ```
 
-O resultado esperado é:
+Esperado:
 
 ```text
 postgresql://mareln:1234@mareln-postgres:5432/mareln
 ```
 
-Para verificar o estado das migrations:
+Depois:
 
 ```bash
 docker exec mareln-api npx prisma migrate status
 ```
 
-Se existirem migrations ainda não aplicadas, o Prisma exibirá quais estão pendentes.
-
 ---
 
-### 9. Aplicar as migrations
-
-Para aplicar as migrations existentes no banco Docker:
+### 10. Aplicar as migrations
 
 ```bash
 docker exec mareln-api npx prisma migrate deploy
@@ -517,31 +499,69 @@ Depois confirme:
 docker exec mareln-api npx prisma migrate status
 ```
 
-O banco deverá aparecer como atualizado.
-
-> Em containers, utilize `prisma migrate deploy` para aplicar migrations já existentes. `prisma migrate dev` é voltado ao desenvolvimento e criação de novas migrations.
-
 ---
 
-### 10. Reiniciar o backend
+## Build, imagem e container
 
-Após aplicar as migrations, se necessário:
+No Docker, essas três coisas são diferentes:
 
-```bash
-docker restart mareln-api
+```text
+Dockerfile
+   |
+   | docker build
+   v
+Imagem
+   |
+   | docker run
+   v
+Container
 ```
 
-Para acompanhar a aplicação:
+### Dockerfile
+
+Define como a imagem deve ser construída.
+
+### Imagem
+
+É o pacote pronto da aplicação.
+
+Exemplo:
+
+```text
+mareln-backend
+```
+
+### Container
+
+É uma instância da imagem em execução.
+
+Exemplo:
+
+```text
+mareln-api
+```
+
+Então:
 
 ```bash
-docker logs -f mareln-api
+docker build -t mareln-backend .
 ```
+
+cria a imagem.
+
+E:
+
+```bash
+docker run --name mareln-api mareln-backend
+```
+
+cria o container usando essa imagem.
 
 ---
 
 ## Comunicação entre os containers
 
-Os dois containers precisam estar na mesma rede:
+Os containers precisam estar na mesma rede:
 
 ```text
 mareln-network
@@ -559,25 +579,15 @@ mareln-postgres:5432
 
 Os containers conseguem utilizar seus nomes como hostnames dentro da rede Docker.
 
-Por isso:
-
-```env
-DATABASE_URL=postgresql://mareln:1234@mareln-postgres:5432/mareln
-```
-
-funciona sem precisar utilizar o endereço IP do container.
-
 ---
 
 ## Persistência do banco de dados
 
-O PostgreSQL armazena seus dados em:
+O PostgreSQL salva seus dados em:
 
 ```text
 /var/lib/postgresql/data
 ```
-
-Dentro do container.
 
 Esse diretório é ligado ao volume:
 
@@ -603,7 +613,7 @@ PostgreSQL
 mareln-postgres-data
 ```
 
-Se o container PostgreSQL for removido:
+Se o container for removido:
 
 ```bash
 docker rm mareln-postgres
@@ -611,13 +621,7 @@ docker rm mareln-postgres
 
 o volume continua existindo.
 
-Ao criar novamente um container utilizando:
-
-```bash
--v mareln-postgres-data:/var/lib/postgresql/data
-```
-
-os dados anteriores continuam disponíveis.
+Ao criar outro container usando o mesmo volume, os dados continuam disponíveis.
 
 > Remover o volume apaga permanentemente os dados armazenados nele.
 
@@ -631,31 +635,31 @@ O Prisma Client é gerado durante o build da imagem:
 npx prisma generate
 ```
 
-Para verificar a configuração:
+Validar o schema:
 
 ```bash
 docker exec mareln-api npx prisma validate
 ```
 
-Para verificar o estado das migrations:
+Verificar migrations:
 
 ```bash
 docker exec mareln-api npx prisma migrate status
 ```
 
-Para aplicar migrations existentes:
+Aplicar migrations existentes:
 
 ```bash
 docker exec mareln-api npx prisma migrate deploy
 ```
 
-Para regenerar o Prisma Client dentro do container:
+Regenerar o Prisma Client:
 
 ```bash
 docker exec mareln-api npx prisma generate
 ```
 
-### Fluxo recomendado
+Fluxo:
 
 ```text
 PostgreSQL iniciado
@@ -677,13 +681,11 @@ Banco atualizado
 
 ## Ver containers
 
-Containers em execução:
-
 ```bash
 docker ps
 ```
 
-Todos os containers:
+Todos:
 
 ```bash
 docker ps -a
@@ -737,22 +739,16 @@ docker stop mareln-postgres
 
 ## Iniciar novamente
 
-Inicie primeiro o banco:
+Banco:
 
 ```bash
 docker start mareln-postgres
 ```
 
-Depois o backend:
+Backend:
 
 ```bash
 docker start mareln-api
-```
-
-Para acompanhar:
-
-```bash
-docker logs -f mareln-api
 ```
 
 ---
@@ -764,9 +760,7 @@ docker restart mareln-postgres
 docker restart mareln-api
 ```
 
-O comando `restart` mantém as configurações já existentes do container.
-
-Se alguma variável de ambiente, rede ou configuração passada no `docker run` precisar mudar, recrie o container em vez de apenas reiniciá-lo.
+Se variáveis, rede ou configuração do `docker run` mudarem, recrie o container em vez de apenas reiniciar.
 
 ---
 
@@ -786,7 +780,7 @@ docker stop mareln-postgres
 docker rm mareln-postgres
 ```
 
-Remover o container PostgreSQL não remove automaticamente:
+O volume continua existindo:
 
 ```text
 mareln-postgres-data
@@ -794,59 +788,81 @@ mareln-postgres-data
 
 ---
 
-## Atualizando a aplicação com Docker
+## Atualizando o backend
 
 Depois de alterar o código:
 
-### 1. Reconstrua a imagem
+### 1. Buildar novamente a imagem
 
 ```bash
 docker build -t mareln-backend .
 ```
 
-### 2. Pare o backend antigo
+### 2. Parar o container antigo
 
 ```bash
 docker stop mareln-api
 ```
 
-### 3. Remova o container antigo
+### 3. Remover o container antigo
 
 ```bash
 docker rm mareln-api
 ```
 
-### 4. Crie o novo container
+### 4. Criar novo container com a nova imagem
 
 ```bash
 docker run -d --name mareln-api --network mareln-network --env-file .env -p 3000:3000 mareln-backend
 ```
 
-### 5. Verifique migrations
+### 5. Verificar migrations
 
 ```bash
 docker exec mareln-api npx prisma migrate status
 ```
 
-### 6. Aplique migrations pendentes
+### 6. Aplicar migrations pendentes
 
 ```bash
 docker exec mareln-api npx prisma migrate deploy
 ```
 
-### 7. Acompanhe os logs
+### 7. Ver logs
 
 ```bash
 docker logs -f mareln-api
 ```
 
-Não é necessário recriar o PostgreSQL ou seu volume sempre que o código do backend mudar.
+Fluxo:
+
+```text
+Alterou código
+    |
+    v
+docker build
+    |
+    v
+Nova imagem
+    |
+    v
+docker stop
+    |
+    v
+docker rm
+    |
+    v
+docker run
+    |
+    v
+Novo container
+```
+
+Não é necessário recriar o PostgreSQL ou o volume sempre que o backend mudar.
 
 ---
 
 ## Dockerfile
-
-O backend utiliza:
 
 ```dockerfile
 FROM node:22
@@ -867,7 +883,7 @@ EXPOSE 3000
 CMD ["npm", "run", "start:prod"]
 ```
 
-### Fluxo
+Fluxo:
 
 ```text
 FROM node:22
@@ -897,10 +913,6 @@ npm run start:prod
 ---
 
 ## .dockerignore
-
-O `.dockerignore` evita que arquivos desnecessários sejam enviados durante o build.
-
-Exemplo:
 
 ```text
 node_modules
@@ -941,13 +953,7 @@ prisma/
 
 não deve ser ignorada.
 
-Ela contém o `schema.prisma`, necessário para:
-
-```bash
-npx prisma generate
-```
-
-e para o funcionamento das migrations.
+Ela contém o `schema.prisma`, necessário para o Prisma Client e migrations.
 
 ---
 
@@ -957,27 +963,27 @@ e para o funcionamento das migrations.
 
 | Comando | Descrição |
 | --- | --- |
-| `npm run start:dev` | Inicia a API em modo desenvolvimento com hot reload |
-| `npm run build` | Gera a build de produção |
+| `npm run start:dev` | Inicia a API em modo desenvolvimento |
+| `npm run build` | Gera a build |
 | `npm run start:prod` | Executa a build de produção |
 | `npx prisma migrate dev` | Cria e aplica migrations em desenvolvimento |
 | `npx prisma migrate deploy` | Aplica migrations existentes |
 | `npx prisma migrate status` | Exibe o estado das migrations |
-| `npx prisma studio` | Abre uma interface visual para o banco |
+| `npx prisma studio` | Abre interface visual do banco |
 | `npx prisma generate` | Regenera o Prisma Client |
-| `npx prisma validate` | Valida o schema Prisma |
+| `npx prisma validate` | Valida o schema |
 
 ### Docker — Backend
 
 | Comando | Descrição |
 | --- | --- |
-| `docker build -t mareln-backend .` | Constrói a imagem do backend |
-| `docker run -d --name mareln-api --network mareln-network --env-file .env -p 3000:3000 mareln-backend` | Executa o backend |
-| `docker logs mareln-api` | Exibe os logs |
-| `docker logs -f mareln-api` | Acompanha os logs |
+| `docker build -t mareln-backend .` | Cria a imagem do backend |
+| `docker run -d --name mareln-api --network mareln-network --env-file .env -p 3000:3000 mareln-backend` | Cria e inicia o container |
+| `docker logs mareln-api` | Exibe logs |
+| `docker logs -f mareln-api` | Acompanha logs |
 | `docker stop mareln-api` | Para o backend |
 | `docker start mareln-api` | Inicia novamente |
-| `docker restart mareln-api` | Reinicia o backend |
+| `docker restart mareln-api` | Reinicia |
 | `docker rm mareln-api` | Remove o container |
 
 ### Docker — PostgreSQL
@@ -985,21 +991,21 @@ e para o funcionamento das migrations.
 | Comando | Descrição |
 | --- | --- |
 | `docker pull postgres:16` | Baixa a imagem PostgreSQL |
-| `docker logs mareln-postgres` | Exibe os logs |
+| `docker logs mareln-postgres` | Exibe logs |
 | `docker stop mareln-postgres` | Para o banco |
 | `docker start mareln-postgres` | Inicia novamente |
-| `docker restart mareln-postgres` | Reinicia o banco |
+| `docker restart mareln-postgres` | Reinicia |
 | `docker rm mareln-postgres` | Remove o container |
 
 ### Docker — Prisma
 
 | Comando | Descrição |
 | --- | --- |
-| `docker exec mareln-api npx prisma validate` | Valida o schema Prisma |
+| `docker exec mareln-api npx prisma validate` | Valida o schema |
 | `docker exec mareln-api npx prisma migrate status` | Verifica migrations |
 | `docker exec mareln-api npx prisma migrate deploy` | Aplica migrations |
-| `docker exec mareln-api npx prisma generate` | Regenera o Prisma Client |
-| `docker exec mareln-api printenv DATABASE_URL` | Exibe a conexão usada pelo container |
+| `docker exec mareln-api npx prisma generate` | Regenera o client |
+| `docker exec mareln-api printenv DATABASE_URL` | Exibe a conexão usada |
 
 ### Docker — Infraestrutura
 
@@ -1010,8 +1016,8 @@ e para o funcionamento das migrations.
 | `docker images` | Lista imagens |
 | `docker network ls` | Lista redes |
 | `docker volume ls` | Lista volumes |
-| `docker network create mareln-network` | Cria a rede do projeto |
-| `docker volume create mareln-postgres-data` | Cria o volume do PostgreSQL |
+| `docker network create mareln-network` | Cria a rede |
+| `docker volume create mareln-postgres-data` | Cria o volume |
 
 ---
 
@@ -1021,9 +1027,9 @@ O backend está sendo desenvolvido de forma incremental como parte da primeira v
 
 Novos módulos, regras de negócio e recursos serão adicionados conforme a evolução da plataforma.
 
-A aplicação pode ser executada diretamente com Node.js ou completamente através de Docker.
+A aplicação pode ser executada localmente ou completamente através de Docker.
 
-Na execução Docker:
+Fluxo atual com Docker:
 
 ```text
 GitHub
@@ -1035,7 +1041,13 @@ Código do projeto
 Dockerfile
    |
    v
+docker build
+   |
+   v
 Imagem mareln-backend
+   |
+   v
+docker run
    |
    v
 Container mareln-api
@@ -1050,11 +1062,11 @@ Volume mareln-postgres-data
 
 O GitHub continua responsável pelo versionamento do código.
 
-O Docker é responsável por padronizar o ambiente de execução da aplicação, permitindo que diferentes desenvolvedores utilizem as mesmas versões e configurações.
+O Docker é responsável por padronizar o ambiente de execução da aplicação.
 
 Cada desenvolvedor pode clonar o projeto, criar seus próprios containers e executar a aplicação sem precisar instalar o PostgreSQL diretamente na máquina.
 
-O fluxo atual de inicialização com Docker é:
+Fluxo de inicialização:
 
 ```text
 Criar rede
@@ -1066,10 +1078,16 @@ Criar volume
 Subir PostgreSQL
    |
    v
-Buildar backend
+docker build
    |
    v
-Subir backend
+Criar imagem
+   |
+   v
+docker run
+   |
+   v
+Criar container do backend
    |
    v
 Verificar migrations
