@@ -55,7 +55,7 @@ O projeto foi pensado de forma modular desde o início. Cada funcionalidade vive
 | [NestJS](https://nestjs.com/) | Framework principal da API |
 | [TypeScript](https://www.typescriptlang.org/) | Tipagem estática |
 | [Prisma](https://www.prisma.io/) | ORM, schema e migrations |
-| [MySQL](https://www.mysql.com/) | Banco de dados relacional |
+| [PostgreSQL](https://www.postgresql.org/) | Banco de dados relacional |
 | [JWT](https://jwt.io/) | Autenticação stateless |
 | [class-validator](https://github.com/typestack/class-validator) | Validação de DTOs |
 | [Docker](https://www.docker.com/) | Padronização do ambiente e execução em container |
@@ -119,7 +119,7 @@ Service
 Prisma Client
    |
    v
-MySQL
+PostgreSQL
 ```
 
 ---
@@ -142,16 +142,16 @@ cd mareln-backend
 
 Crie um arquivo `.env` na raiz do projeto.
 
-Exemplo:
+Exemplo para execução local:
 
 ```env
-DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/mareln"
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/mareln"
 JWT_SECRET="your-secret-key"
 ```
 
 | Variável | Descrição |
 | --- | --- |
-| `DATABASE_URL` | String de conexão com o MySQL |
+| `DATABASE_URL` | String de conexão com o PostgreSQL |
 | `JWT_SECRET` | Chave usada para assinar os tokens JWT |
 
 > **Atenção:** nunca versione o arquivo `.env`. Em produção, utilize um `JWT_SECRET` longo, aleatório e exclusivo.
@@ -171,7 +171,7 @@ JWT_SECRET=
 
 - Node.js 18 ou superior
 - npm
-- MySQL em execução
+- PostgreSQL em execução
 
 ### Instale as dependências
 
@@ -210,7 +210,7 @@ http://localhost:3000
 ### Pré-requisitos
 
 - Docker Desktop ou Docker Engine
-- MySQL acessível pela aplicação
+- PostgreSQL acessível pela aplicação
 
 ### Construa a imagem
 
@@ -296,14 +296,14 @@ docker rm mareln-api
 
 ---
 
-## Banco local + Docker
+## PostgreSQL local + Docker
 
-Se o MySQL estiver rodando diretamente na máquina host, existe uma diferença importante.
+Se o PostgreSQL estiver rodando diretamente na máquina host, existe uma diferença importante.
 
-Na execução local:
+Na execução local, normalmente a conexão será:
 
 ```env
-DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/mareln"
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/mareln"
 ```
 
 Dentro do container, `localhost` representa o próprio container.
@@ -311,10 +311,20 @@ Dentro do container, `localhost` representa o próprio container.
 Por isso, ao utilizar Docker no Windows ou macOS, pode ser necessário usar:
 
 ```env
-DATABASE_URL="mysql://USER:PASSWORD@host.docker.internal:3306/mareln"
+DATABASE_URL="postgresql://USER:PASSWORD@host.docker.internal:5432/mareln"
 ```
 
-Assim, o container consegue acessar o MySQL que está rodando na máquina local.
+Assim, o container consegue acessar o PostgreSQL que está rodando na máquina local.
+
+Resumo:
+
+```text
+NestJS local:
+localhost:5432
+
+NestJS dentro do Docker:
+host.docker.internal:5432
+```
 
 ---
 
@@ -367,6 +377,7 @@ docker run --name mareln-api --env-file .env -p 3000:3000 mareln-backend
 | `docker run --env-file .env -p 3000:3000 mareln-backend` | Executa a API em um container |
 | `docker ps` | Lista containers em execução |
 | `docker logs mareln-api` | Exibe os logs do container |
+| `docker logs -f mareln-api` | Acompanha os logs em tempo real |
 | `docker stop mareln-api` | Para o container |
 | `docker start mareln-api` | Inicia novamente um container parado |
 | `docker rm mareln-api` | Remove o container |
