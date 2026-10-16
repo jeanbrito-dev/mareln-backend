@@ -1,16 +1,46 @@
-FROM node:22
+FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
+RUN npm ci
 
-RUN npm install
 
-COPY . .
+FROM dependencies AS build
 
-RUN npx prisma generate
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY tsconfig.json tsconfig.build.json ./
+RUN npm run prisma:generate
+
+COPY nest-cli.json ./
+COPY src ./src
 RUN npm run build
 
+
+FROM dependencies AS migrations
+
+ENV NODE_ENV=production
+
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+CMD ["npm", "run", "prisma:migrate:deploy"]
+
+
+FROM node:22-alpine AS runtime
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=build /app/dist ./dist
+
 EXPOSE 3000
+
+USER node
 
 CMD ["npm", "run", "start:prod"]
