@@ -27,6 +27,10 @@ model Usuario {
   tipo      TipoUsuario @default(VISITANTE)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  favoritos    Favorito[]
+  comentarios  Comentario[]
+  avaliacoes   Avaliacao[]
 }
 
 model Evento {
@@ -41,6 +45,10 @@ model Evento {
   categoria   Categoria? @relation(fields: [categoriaId], references: [id])
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  favoritos    Favorito[]
+  comentarios  Comentario[]
+  avaliacoes   Avaliacao[]
 }
 
 model Categoria {
@@ -51,3 +59,38 @@ model Categoria {
   atualizadoEm DateTime @updatedAt
 }
 
+model Favorito {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  eventoId  Int
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  evento  Evento  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, eventoId])
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  conteudo  String
+  usuarioId Int
+  eventoId  Int
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  evento  Evento  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+}
+
+model Avaliacao {
+  id        Int      @id @default(autoincrement())
+  nota      Int
+  usuarioId Int
+  eventoId  Int
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  evento  Evento  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, eventoId])
+}
