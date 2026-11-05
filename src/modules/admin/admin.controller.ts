@@ -2,7 +2,6 @@
 import {
   Controller,
   Get,
-  Post,
   Patch,
   Delete,
   Body,
@@ -14,16 +13,23 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { TipoUsuario } from '../../generated/prisma/client.js';
 import { AdminService } from './admin.service.js';
 import { FiltroAdminDto } from './dto/filter-admin.dto.js';
 import { AtualizarUsuarioAdminDto } from './dto/update-admin.dto.js';
 import { FiltroEventoAdminDto } from './dto/filtro-evento-admin.dto.js';
 
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+
 @Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(TipoUsuario.ADMIN)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // ---------- Usuários ----------
+  // Usuários
 
   @Get('usuarios')
   listarUsuarios(@Query() filtros: FiltroAdminDto) {
@@ -49,7 +55,7 @@ export class AdminController {
     return this.adminService.deletarUsuario(id);
   }
 
-  // ---------- Eventos ----------
+  // Eventos
 
   @Get('eventos')
   listarEventos(@Query() filtros: FiltroEventoAdminDto) {
@@ -62,7 +68,7 @@ export class AdminController {
     return this.adminService.deletarEvento(id);
   }
 
-  // ---------- Categorias ----------
+  // Categorias
 
   @Get('categorias')
   listarCategorias() {
@@ -75,7 +81,7 @@ export class AdminController {
     return this.adminService.deletarCategoria(id);
   }
 
-  // ---------- Dashboard ----------
+  // Dashboard
 
   @Get('dashboard')
   dashboard() {
