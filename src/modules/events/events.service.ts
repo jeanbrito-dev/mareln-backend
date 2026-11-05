@@ -1,10 +1,14 @@
+
 import {
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
 
+import type { TipoUsuario } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+
 import type { CriarEventoDto } from './dto/create-event.dto.js';
 import type { FiltroEventoDto } from './dto/filter-events.dto.js';
 import type { AtualizarEventoDto } from './dto/update-event.dto.js';
@@ -13,9 +17,9 @@ import type { AtualizarEventoDto } from './dto/update-event.dto.js';
 export class EventosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async criar(dados: CriarEventoDto) {
+  async criar(usuarioId: number, dados: CriarEventoDto) {
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: dados.usuarioId },
+      where: { id: usuarioId },
     });
 
     if (!usuario) {
@@ -38,7 +42,7 @@ export class EventosService {
         descricao: dados.descricao,
         data: new Date(dados.data),
         local: dados.local,
-        usuarioId: dados.usuarioId,
+        usuarioId,
         categoriaId: dados.categoriaId,
       },
     });
@@ -104,18 +108,19 @@ export class EventosService {
     return evento;
   }
 
-  async atualizar(id: number, dados: AtualizarEventoDto) {
-    await this.buscarPorId(id);
+  async atualizar(
+    id: number,
+    solicitanteId: number,
+    tipoUsuario: TipoUsuario,
+    dados: AtualizarEventoDto,
+  ) {
+    const evento = await this.buscarPorId(id);
 
-    if (dados.usuarioId !== undefined) {
-      const usuario = await this.prisma.usuario.findUnique({
-        where: { id: dados.usuarioId },
-      });
-
-      if (!usuario) {
-        throw new NotFoundException('Usuário não encontrado.');
-      }
-    }
+    this.validarPermissao(
+      evento.usuarioId,
+      solicitanteId,
+      tipoUsuario,
+    );
 
     if (dados.categoriaId !== undefined && dados.categoriaId !== null) {
       const categoria = await this.prisma.categoria.findUnique({
@@ -143,9 +148,6 @@ export class EventosService {
           ...(dados.local !== undefined && {
             local: dados.local,
           }),
-          ...(dados.usuarioId !== undefined && {
-            usuarioId: dados.usuarioId,
-          }),
           ...(dados.categoriaId !== undefined && {
             categoriaId: dados.categoriaId,
           }),
@@ -167,8 +169,18 @@ export class EventosService {
     }
   }
 
-  async deletar(id: number) {
-    await this.buscarPorId(id);
+  async deletar(
+    id: number,
+    solicitanteId: number,
+    tipoUsuario: TipoUsuario,
+  ) {
+    const evento = await this.buscarPorId(id);
+
+    this.validarPermissao(
+      evento.usuarioId,
+      solicitanteId,
+      tipoUsuario,
+    );
 
     await this.prisma.evento.delete({
       where: { id },
@@ -177,5 +189,20 @@ export class EventosService {
     return {
       mensagem: 'Evento excluído com sucesso.',
     };
+  }
+
+  private validarPermissao(
+    proprietarioId: number,
+    solicitanteId: number,
+    tipoUsuario: TipoUsuario,
+  ) {
+    const ehProprietario = proprietarioId === solicitanteId;
+    const ehAdministrador = tipoUsuario === 'ADMIN';
+
+    if (!ehProprietario && !ehAdministrador) {
+      throw new ForbiddenException(
+        'Você não tem permissão para modificar este evento.',
+      );
+    }
   }
 }

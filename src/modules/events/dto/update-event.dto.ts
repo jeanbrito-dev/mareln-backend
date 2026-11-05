@@ -1,3 +1,4 @@
+
 import {
   IsOptional,
   IsString,
@@ -25,10 +26,6 @@ export class AtualizarEventoDto {
   @IsString()
   @IsNotEmpty()
   local?: string;
-
-  @IsOptional()
-  @IsInt()
-  usuarioId?: number;
 
   @IsOptional()
   @IsInt()
