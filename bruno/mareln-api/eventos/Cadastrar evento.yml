@@ -10,8 +10,8 @@ http:
     type: json
     data: |-
       {
-        "titulo": "Festival Maré LN - Teste IFSP",
-        "descricao": "Evento de demonstração para testar a publicação de eventos pelo perfil divulgador.",
+        "titulo": "Evento pendente - teste de moderação",
+        "descricao": "Evento criado para testar o fluxo de aprovação administrativa.",
         "data": "2026-12-20T18:00:00.000Z",
         "local": "Caraguatatuba"
       }

@@ -4,3 +4,5 @@ variables:
     name: tokenVisitante
   - secret: true
     name: tokenDivulgador
+  - secret: true
+    name: tokenAdmin

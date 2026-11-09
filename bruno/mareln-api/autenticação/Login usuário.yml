@@ -1,18 +1,17 @@
 info:
-  name: Cadastrar usuário
+  name: Login usuário
   type: http
   seq: 1
 
 http:
   method: POST
-  url: http://localhost:3001/auth/register
+  url: http://localhost:3001/auth/login
   body:
     type: json
     data: |-
       {
-        "nome": "Teste IFSP",
-        "email": "teste.ifsp@mareln.local",
-        "senha": "TesteIFSP#2026"
+        "email": "admin.ifsp@mareln.local",
+        "senha": "123456789"
       }
   auth: inherit
 

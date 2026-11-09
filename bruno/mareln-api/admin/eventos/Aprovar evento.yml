@@ -1,0 +1,23 @@
+info:
+  name: Aprovar evento
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:3001/admin/eventos/4/status
+  body:
+    type: json
+    data: |-
+      {
+        "status": "APROVADO"
+      }
+  auth:
+    type: bearer
+    token: "{{tokenAdmin}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

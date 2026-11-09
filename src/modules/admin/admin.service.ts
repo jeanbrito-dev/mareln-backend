@@ -9,6 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import type { FiltroAdminDto } from './dto/filter-admin.dto.js';
 import type { AtualizarUsuarioAdminDto } from './dto/update-admin.dto.js';
 import type { FiltroEventoAdminDto } from './dto/filtro-evento-admin.dto.js';
+import type { AtualizarStatusEventoAdminDto } from './dto/update-event-status.dto.js';
 
 const usuarioPublicoSelect = {
   id: true,
@@ -22,7 +23,7 @@ const usuarioPublicoSelect = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ---------- Usuários ----------
 
@@ -202,6 +203,27 @@ export class AdminService {
     return {
       mensagem: 'Evento excluído com sucesso.',
     };
+  }
+
+  async atualizarStatusEvento(
+    id: number,
+    dados: AtualizarStatusEventoAdminDto,
+  ) {
+    const evento = await this.prisma.evento.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!evento) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
+
+    return this.prisma.evento.update({
+      where: { id },
+      data: {
+        status: dados.status,
+      },
+    });
   }
 
   // ---------- Categorias ----------

@@ -18,6 +18,12 @@ enum TipoUsuario {
   ADMIN
 }
 
+enum StatusEvento {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
 model Usuario {
   id        Int         @id @default(autoincrement())
   nome      String
@@ -28,34 +34,35 @@ model Usuario {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  favoritos    Favorito[]
-  comentarios  Comentario[]
-  avaliacoes   Avaliacao[]
+  favoritos   Favorito[]
+  comentarios Comentario[]
+  avaliacoes  Avaliacao[]
 }
 
 model Evento {
-  id          Int      @id @default(autoincrement())
-  titulo      String
-  descricao   String
-  data        DateTime
-  local       String
-  usuarioId   Int
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-  categoriaId Int?
-  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           Int          @id @default(autoincrement())
+  titulo       String
+  descricao    String
+  data         DateTime
+  local        String
+  status       StatusEvento @default(PENDENTE)
+  usuarioId    Int
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
+  categoriaId  Int?
+  categoria    Categoria?   @relation(fields: [categoriaId], references: [id])
+  criadoEm     DateTime     @default(now())
+  atualizadoEm DateTime     @updatedAt
 
-  favoritos    Favorito[]
-  comentarios  Comentario[]
-  avaliacoes   Avaliacao[]
+  favoritos   Favorito[]
+  comentarios Comentario[]
+  avaliacoes  Avaliacao[]
 }
 
 model Categoria {
-  id          Int      @id @default(autoincrement())
-  nome        String   @unique
-  eventos     Evento[]
-  criadoEm    DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  nome         String   @unique
+  eventos      Evento[]
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 

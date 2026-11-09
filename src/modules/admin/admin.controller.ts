@@ -18,6 +18,7 @@ import { AdminService } from './admin.service.js';
 import { FiltroAdminDto } from './dto/filter-admin.dto.js';
 import { AtualizarUsuarioAdminDto } from './dto/update-admin.dto.js';
 import { FiltroEventoAdminDto } from './dto/filtro-evento-admin.dto.js';
+import { AtualizarStatusEventoAdminDto } from './dto/update-event-status.dto.js';
 
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -27,7 +28,7 @@ import { RolesGuard } from '../auth/guards/roles.guard.js';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(TipoUsuario.ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService) { }
 
   // Usuários
 
@@ -60,6 +61,14 @@ export class AdminController {
   @Get('eventos')
   listarEventos(@Query() filtros: FiltroEventoAdminDto) {
     return this.adminService.listarEventos(filtros);
+  }
+
+  @Patch('eventos/:id/status')
+  atualizarStatusEvento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dados: AtualizarStatusEventoAdminDto,
+  ) {
+    return this.adminService.atualizarStatusEvento(id, dados);
   }
 
   @Delete('eventos/:id')
