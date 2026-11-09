@@ -1,0 +1,26 @@
+info:
+  name: Bloquear criação de evento por visitante
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3001/eventos
+  body:
+    type: json
+    data: |-
+      {
+        "titulo": "Evento de teste IFSP",
+        "descricao": "Teste de permissões do Maré LN.",
+        "data": "2026-12-20T18:00:00.000Z",
+        "local": "Caraguatatuba"
+      }
+  auth:
+    type: bearer
+    token: "{{tokenDivulgador}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

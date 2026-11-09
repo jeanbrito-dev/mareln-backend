@@ -1,0 +1,22 @@
+info:
+  name: Login visitante IFSP
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3001/auth/login
+  body:
+    type: json
+    data: |-
+      {
+        "email": "visitante.ifsp@mareln.local",
+        "senha": "VisitanteIFSP#2026"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

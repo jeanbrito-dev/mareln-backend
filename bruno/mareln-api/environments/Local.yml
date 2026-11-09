@@ -1,0 +1,6 @@
+name: Local
+variables:
+  - secret: true
+    name: tokenVisitante
+  - secret: true
+    name: tokenDivulgador
