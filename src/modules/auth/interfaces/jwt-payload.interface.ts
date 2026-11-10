@@ -5,9 +5,11 @@ export interface JwtPayload {
   email: string;
   tipo: TipoUsuario;
   tokenType: 'access';
+  tokenVersion: number;
 }
 
 export interface RefreshTokenPayload {
   sub: number;
   tokenType: 'refresh';
+  tokenVersion: number;
 }

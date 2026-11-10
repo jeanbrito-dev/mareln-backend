@@ -1,12 +1,16 @@
+
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
 import * as bcrypt from 'bcrypt';
 
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+
 import { CreateUsuarioDto } from './dto/create-user.dto.js';
 import { UpdateUsuarioDto } from './dto/update-user.dto.js';
 
@@ -21,7 +25,7 @@ const usuarioPublicoSelect = {
 
 @Injectable()
 export class UsuariosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(dto: CreateUsuarioDto) {
     const senhaHash = await bcrypt.hash(dto.senha, 10);
@@ -55,30 +59,87 @@ export class UsuariosService {
     });
 
     if (!usuario) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException('Usuário não encontrado.');
     }
 
     return usuario;
   }
 
   async update(id: number, dto: UpdateUsuarioDto) {
-    const dadosAtualizados = {
-      nome: dto.nome,
-      email: dto.email,
-      senha: dto.senha ? await bcrypt.hash(dto.senha, 10) : undefined,
-    };
-
     try {
       return await this.prisma.usuario.update({
         where: {
           id,
         },
-        data: dadosAtualizados,
+        data: {
+          ...(dto.nome !== undefined && { nome: dto.nome }),
+          ...(dto.email !== undefined && { email: dto.email }),
+        },
         select: usuarioPublicoSelect,
       });
     } catch (error) {
       this.tratarErroPrisma(error);
     }
+  }
+
+  async alterarSenha(
+    id: number,
+    senhaAtual: string,
+    novaSenha: string,
+  ) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        senha: true,
+      },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    const senhaValida = await bcrypt.compare(
+      senhaAtual,
+      usuario.senha,
+    );
+
+    if (!senhaValida) {
+      throw new BadRequestException(
+        'A senha atual está incorreta.',
+      );
+    }
+
+    const novaSenhaIgual = await bcrypt.compare(
+      novaSenha,
+      usuario.senha,
+    );
+
+    if (novaSenhaIgual) {
+      throw new BadRequestException(
+        'A nova senha deve ser diferente da senha atual.',
+      );
+    }
+
+    const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+    await this.prisma.usuario.update({
+      where: {
+        id,
+      },
+      data: {
+        senha: senhaHash,
+        tokenVersion: {
+          increment: 1,
+        },
+      },
+    });
+
+    return {
+      mensagem: 'Senha alterada com sucesso.',
+    };
   }
 
   async remove(id: number) {
@@ -101,7 +162,7 @@ export class UsuariosService {
       }
 
       if (error.code === 'P2025') {
-        throw new NotFoundException('Usuário não encontrado');
+        throw new NotFoundException('Usuário não encontrado.');
       }
     }
 

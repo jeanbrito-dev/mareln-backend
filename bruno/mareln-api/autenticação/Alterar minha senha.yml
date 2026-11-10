@@ -1,0 +1,27 @@
+info:
+  name: Alterar minha senha
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: http://localhost:3001/usuarios/me/senha
+  body:
+    type: json
+    data: |2-
+        body:
+          type: json
+          data: |-
+      {
+        "senhaAtual": "{{senhaAtual}}",
+        "novaSenha": "{{novaSenha}}"
+      }
+  auth:
+    type: bearer
+    token: "{{tokenDivulgador}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -10,9 +10,9 @@ http:
     type: json
     data: |-
       {
-        "nome": "Divulgador Local",
-        "email": "divulgador.local@mareln.local",
-        "senha": "DefinaUmaSenhaForteAqui"
+        "nome": "Administrador Local",
+        "email": "admin.local@mareln.local",
+        "senha": "123456789"
       }
   auth: inherit
 

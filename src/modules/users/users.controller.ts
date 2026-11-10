@@ -22,6 +22,7 @@ import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface.js';
 
 import { UsuariosService } from './users.service.js';
 import { UpdateUsuarioDto } from './dto/update-user.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 
 type AuthRequest = Request & {
   user: JwtPayload;
@@ -37,6 +38,19 @@ export class UsuariosController {
   @UseGuards(RolesGuard)
   findAll() {
     return this.usuariosService.findAll();
+  }
+
+  // Alteração da própria senha.
+  @Patch('me/senha')
+  alterarSenha(
+    @Req() req: AuthRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.usuariosService.alterarSenha(
+      req.user.sub,
+      dto.senhaAtual,
+      dto.novaSenha,
+    );
   }
 
   @Get(':id')

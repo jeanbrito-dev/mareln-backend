@@ -6,3 +6,9 @@ variables:
     name: tokenDivulgador
   - secret: true
     name: tokenAdmin
+  - secret: true
+    name: refreshTokenDivulgador
+  - secret: true
+    name: senhaAtual
+  - secret: true
+    name: novaSenha

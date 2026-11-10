@@ -11,7 +11,7 @@ http:
     data: |-
       {
         "email": "divulgador.local@mareln.local",
-        "senha": "DefinaUmaSenhaForteAqui"
+        "senha": "10231217"
       }
   auth: inherit
 

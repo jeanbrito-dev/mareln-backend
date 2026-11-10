@@ -1,3 +1,4 @@
+
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
@@ -17,8 +18,12 @@ import { getJwtSecret, getRefreshTokenExpiration } from './jwt.config.js';
 
 interface UsuarioParaToken {
   id: number;
+  nome: string;
   email: string;
   tipo: TipoUsuario;
+  tokenVersion: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 @Injectable()
@@ -32,7 +37,11 @@ export class AuthService {
   async register(dto: CreateUsuarioDto) {
     const usuario = await this.usuariosService.create(dto);
 
-    return this.criarRespostaAutenticacao(usuario);
+    const usuarioAutenticado = await this.findAuthenticatedUser(
+      usuario.id,
+    );
+
+    return this.criarRespostaAutenticacao(usuarioAutenticado);
   }
 
   async login(dto: LoginDto) {
@@ -40,13 +49,26 @@ export class AuthService {
       where: {
         email: dto.email,
       },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        senha: true,
+        tipo: true,
+        tokenVersion: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!usuario) {
       throw new UnauthorizedException('Email ou senha inválidos');
     }
 
-    const senhaValida = await bcrypt.compare(dto.senha, usuario.senha);
+    const senhaValida = await bcrypt.compare(
+      dto.senha,
+      usuario.senha,
+    );
 
     if (!senhaValida) {
       throw new UnauthorizedException('Email ou senha inválidos');
@@ -57,6 +79,9 @@ export class AuthService {
       nome: usuario.nome,
       email: usuario.email,
       tipo: usuario.tipo,
+      tokenVersion: usuario.tokenVersion,
+      createdAt: usuario.createdAt,
+      updatedAt: usuario.updatedAt,
     });
   }
 
@@ -69,14 +94,27 @@ export class AuthService {
         { secret: getJwtSecret() },
       );
     } catch {
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+      throw new UnauthorizedException(
+        'Refresh token inválido ou expirado',
+      );
     }
 
-    if (payload.tokenType !== 'refresh') {
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+    if (
+      payload.tokenType !== 'refresh' ||
+      !Number.isInteger(payload.tokenVersion)
+    ) {
+      throw new UnauthorizedException(
+        'Refresh token inválido ou expirado',
+      );
     }
 
     const usuario = await this.findAuthenticatedUser(payload.sub);
+
+    if (payload.tokenVersion !== usuario.tokenVersion) {
+      throw new UnauthorizedException(
+        'Sessão expirada. Faça login novamente.',
+      );
+    }
 
     return this.criarRespostaAutenticacao(usuario);
   }
@@ -89,6 +127,7 @@ export class AuthService {
         nome: true,
         email: true,
         tipo: true,
+        tokenVersion: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -101,19 +140,21 @@ export class AuthService {
     return usuario;
   }
 
-  private async criarRespostaAutenticacao<T extends UsuarioParaToken>(
-    usuario: T,
+  private async criarRespostaAutenticacao(
+    usuario: UsuarioParaToken,
   ) {
     const accessPayload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
       tipo: usuario.tipo,
       tokenType: 'access',
+      tokenVersion: usuario.tokenVersion,
     };
 
     const refreshPayload: RefreshTokenPayload = {
       sub: usuario.id,
       tokenType: 'refresh',
+      tokenVersion: usuario.tokenVersion,
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -126,7 +167,18 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      usuario,
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tipo: usuario.tipo,
+        ...(usuario.createdAt && {
+          createdAt: usuario.createdAt,
+        }),
+        ...(usuario.updatedAt && {
+          updatedAt: usuario.updatedAt,
+        }),
+      },
     };
   }
 }
