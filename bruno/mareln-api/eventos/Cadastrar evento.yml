@@ -10,10 +10,10 @@ http:
     type: json
     data: |-
       {
-        "titulo": "Evento pendente - teste de moderação",
-        "descricao": "Evento criado para testar o fluxo de aprovação administrativa.",
-        "data": "2026-12-20T18:00:00.000Z",
-        "local": "Caraguatatuba"
+        "titulo": "Teste de rejeição - Mareln",
+        "descricao": "Evento criado para testar a rejeição administrativa.",
+        "data": "2026-12-25T18:00:00.000Z",
+        "local": "São Sebastião"
       }
   auth:
     type: bearer

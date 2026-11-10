@@ -48,9 +48,11 @@ export class EventosService {
     });
   }
 
+  // Consulta pública: somente eventos aprovados.
   async listar(filtros: FiltroEventoDto) {
     return this.prisma.evento.findMany({
       where: {
+        status: 'APROVADO',
         ...(filtros.titulo && {
           titulo: {
             contains: filtros.titulo,
@@ -75,7 +77,6 @@ export class EventosService {
           select: {
             id: true,
             nome: true,
-            email: true,
           },
         },
         categoria: true,
@@ -86,15 +87,18 @@ export class EventosService {
     });
   }
 
+  // Consulta pública individual: somente eventos aprovados.
   async buscarPorId(id: number) {
-    const evento = await this.prisma.evento.findUnique({
-      where: { id },
+    const evento = await this.prisma.evento.findFirst({
+      where: {
+        id,
+        status: 'APROVADO',
+      },
       include: {
         usuario: {
           select: {
             id: true,
             nome: true,
-            email: true,
           },
         },
         categoria: true,
@@ -114,7 +118,7 @@ export class EventosService {
     tipoUsuario: TipoUsuario,
     dados: AtualizarEventoDto,
   ) {
-    const evento = await this.buscarPorId(id);
+    const evento = await this.buscarPorIdInterno(id);
 
     this.validarPermissao(
       evento.usuarioId,
@@ -174,7 +178,7 @@ export class EventosService {
     solicitanteId: number,
     tipoUsuario: TipoUsuario,
   ) {
-    const evento = await this.buscarPorId(id);
+    const evento = await this.buscarPorIdInterno(id);
 
     this.validarPermissao(
       evento.usuarioId,
@@ -189,6 +193,23 @@ export class EventosService {
     return {
       mensagem: 'Evento excluído com sucesso.',
     };
+  }
+
+  // Consulta interna para edição e exclusão de qualquer status.
+  private async buscarPorIdInterno(id: number) {
+    const evento = await this.prisma.evento.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        usuarioId: true,
+      },
+    });
+
+    if (!evento) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
+
+    return evento;
   }
 
   private validarPermissao(

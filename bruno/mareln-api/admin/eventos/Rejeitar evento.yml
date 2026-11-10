@@ -1,0 +1,23 @@
+info:
+  name: Rejeitar evento
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: http://localhost:3001/admin/eventos/3/status
+  body:
+    type: json
+    data: |-
+      {
+        "status": "REJEITADO"
+      }
+  auth:
+    type: bearer
+    token: "{{tokenAdmin}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

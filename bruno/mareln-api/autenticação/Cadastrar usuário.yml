@@ -10,9 +10,9 @@ http:
     type: json
     data: |-
       {
-        "nome": "Administrador IFSP",
-        "email": "admin.ifsp@mareln.local",
-        "senha": "123456789"
+        "nome": "Divulgador Local",
+        "email": "divulgador.local@mareln.local",
+        "senha": "DefinaUmaSenhaForteAqui"
       }
   auth: inherit
 
