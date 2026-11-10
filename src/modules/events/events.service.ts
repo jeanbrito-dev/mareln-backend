@@ -15,7 +15,7 @@ import type { AtualizarEventoDto } from './dto/update-event.dto.js';
 
 @Injectable()
 export class EventosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async criar(usuarioId: number, dados: CriarEventoDto) {
     const usuario = await this.prisma.usuario.findUnique({
@@ -79,6 +79,21 @@ export class EventosService {
             nome: true,
           },
         },
+        categoria: true,
+      },
+      orderBy: {
+        data: 'asc',
+      },
+    });
+  }
+
+  // Consulta privada: todos os eventos do usuário autenticado.
+  async listarMeus(usuarioId: number) {
+    return this.prisma.evento.findMany({
+      where: {
+        usuarioId,
+      },
+      include: {
         categoria: true,
       },
       orderBy: {

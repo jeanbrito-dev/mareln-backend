@@ -6,7 +6,6 @@ info:
 http:
   method: GET
   url: http://localhost:3001/eventos
-  auth: inherit
 
 settings:
   encodeUrl: true

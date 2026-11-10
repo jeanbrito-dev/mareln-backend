@@ -1,0 +1,17 @@
+info:
+  name: Listar meus eventos
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:3001/eventos/meus
+  auth:
+    type: bearer
+    token: "{{tokenDivulgador}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

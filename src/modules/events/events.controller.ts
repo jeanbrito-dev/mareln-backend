@@ -34,7 +34,7 @@ type AuthRequest = Request & {
 
 @Controller('eventos')
 export class EventosController {
-  constructor(private readonly eventosService: EventosService) {}
+  constructor(private readonly eventosService: EventosService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,6 +46,13 @@ export class EventosController {
   @Get()
   listar(@Query() filtros: FiltroEventoDto) {
     return this.eventosService.listar(filtros);
+  }
+
+  @Get('meus')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(TipoUsuario.DIVULGADOR, TipoUsuario.ADMIN)
+  listarMeus(@Req() req: AuthRequest) {
+    return this.eventosService.listarMeus(req.user.sub);
   }
 
   @Get(':id')
