@@ -10,9 +10,9 @@ http:
     type: json
     data: |-
       {
-        "nome": "Administrador Local",
-        "email": "admin.local@mareln.local",
-        "senha": "123456789"
+        "nome": "Novo Visitante",
+        "email": "novo-visitante@mareln.local",
+        "senha": "{{senhaCadastro}}"
       }
   auth: inherit
 

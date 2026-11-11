@@ -12,3 +12,9 @@ variables:
     name: senhaAtual
   - secret: true
     name: novaSenha
+  - secret: true
+    name: senhaAdmin
+  - secret: true
+    name: senhaDivulgador
+  - secret: true
+    name: senhaCadastro

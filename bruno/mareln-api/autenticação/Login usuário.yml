@@ -10,8 +10,8 @@ http:
     type: json
     data: |-
       {
-        "email": "divulgador.local@mareln.local",
-        "senha": "10231217"
+        "email": "teste.1793918216479@mareln.local",
+        "senha": "{{senhaAdmin}}"
       }
   auth: inherit
 
