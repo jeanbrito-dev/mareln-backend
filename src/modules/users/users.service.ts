@@ -1,8 +1,8 @@
-
 import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { EventImageService } from '../events/event-image.service.js';
 
 import { CreateUsuarioDto } from './dto/create-user.dto.js';
 import { UpdateUsuarioDto } from './dto/update-user.dto.js';
@@ -19,13 +20,21 @@ const usuarioPublicoSelect = {
   nome: true,
   email: true,
   tipo: true,
+  cidadePreferida: true,
+  interesses: true,
+  fotoPerfilUrl: true,
   createdAt: true,
   updatedAt: true,
 } as const;
 
 @Injectable()
 export class UsuariosService {
-  constructor(private readonly prisma: PrismaService) { }
+  private readonly logger = new Logger(UsuariosService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventImageService: EventImageService,
+  ) {}
 
   async create(dto: CreateUsuarioDto) {
     const senhaHash = await bcrypt.hash(dto.senha, 10);
@@ -52,9 +61,7 @@ export class UsuariosService {
 
   async findOne(id: number) {
     const usuario = await this.prisma.usuario.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       select: usuarioPublicoSelect,
     });
 
@@ -68,12 +75,16 @@ export class UsuariosService {
   async update(id: number, dto: UpdateUsuarioDto) {
     try {
       return await this.prisma.usuario.update({
-        where: {
-          id,
-        },
+        where: { id },
         data: {
           ...(dto.nome !== undefined && { nome: dto.nome }),
           ...(dto.email !== undefined && { email: dto.email }),
+          ...(dto.cidadePreferida !== undefined && {
+            cidadePreferida: dto.cidadePreferida,
+          }),
+          ...(dto.interesses !== undefined && {
+            interesses: dto.interesses,
+          }),
         },
         select: usuarioPublicoSelect,
       });
@@ -82,15 +93,69 @@ export class UsuariosService {
     }
   }
 
+  async salvarFotoPerfil(id: number, arquivo: Express.Multer.File) {
+    const resultadoUpload = await this.eventImageService.salvar(arquivo);
+
+    try {
+      const usuarioAtual = await this.prisma.usuario.findUnique({
+        where: { id },
+        select: { fotoPerfilUrl: true },
+      });
+
+      if (!usuarioAtual) {
+        throw new NotFoundException('Usuário não encontrado.');
+      }
+
+      const usuarioAtualizado = await this.prisma.usuario.update({
+        where: { id },
+        data: { fotoPerfilUrl: resultadoUpload.imagemUrl },
+        select: usuarioPublicoSelect,
+      });
+
+      if (
+        usuarioAtual.fotoPerfilUrl &&
+        usuarioAtual.fotoPerfilUrl !== resultadoUpload.imagemUrl
+      ) {
+        await this.limparImagemSeNaoUtilizada(usuarioAtual.fotoPerfilUrl);
+      }
+
+      return usuarioAtualizado;
+    } catch (error) {
+      await this.eventImageService.remover(resultadoUpload.imagemUrl);
+      throw error;
+    }
+  }
+
+  async removerFotoPerfil(id: number) {
+    const usuarioAtual = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: { fotoPerfilUrl: true },
+    });
+
+    if (!usuarioAtual) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    const usuarioAtualizado = await this.prisma.usuario.update({
+      where: { id },
+      data: { fotoPerfilUrl: null },
+      select: usuarioPublicoSelect,
+    });
+
+    if (usuarioAtual.fotoPerfilUrl) {
+      await this.limparImagemSeNaoUtilizada(usuarioAtual.fotoPerfilUrl);
+    }
+
+    return usuarioAtualizado;
+  }
+
   async alterarSenha(
     id: number,
     senhaAtual: string,
     novaSenha: string,
   ) {
     const usuario = await this.prisma.usuario.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       select: {
         id: true,
         senha: true,
@@ -101,21 +166,13 @@ export class UsuariosService {
       throw new NotFoundException('Usuário não encontrado.');
     }
 
-    const senhaValida = await bcrypt.compare(
-      senhaAtual,
-      usuario.senha,
-    );
+    const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
 
     if (!senhaValida) {
-      throw new BadRequestException(
-        'A senha atual está incorreta.',
-      );
+      throw new BadRequestException('A senha atual está incorreta.');
     }
 
-    const novaSenhaIgual = await bcrypt.compare(
-      novaSenha,
-      usuario.senha,
-    );
+    const novaSenhaIgual = await bcrypt.compare(novaSenha, usuario.senha);
 
     if (novaSenhaIgual) {
       throw new BadRequestException(
@@ -126,28 +183,20 @@ export class UsuariosService {
     const senhaHash = await bcrypt.hash(novaSenha, 10);
 
     await this.prisma.usuario.update({
-      where: {
-        id,
-      },
+      where: { id },
       data: {
         senha: senhaHash,
-        tokenVersion: {
-          increment: 1,
-        },
+        tokenVersion: { increment: 1 },
       },
     });
 
-    return {
-      mensagem: 'Senha alterada com sucesso.',
-    };
+    return { mensagem: 'Senha alterada com sucesso.' };
   }
 
   async remove(id: number) {
     try {
       return await this.prisma.usuario.delete({
-        where: {
-          id,
-        },
+        where: { id },
         select: usuarioPublicoSelect,
       });
     } catch (error) {
@@ -155,10 +204,28 @@ export class UsuariosService {
     }
   }
 
+  private async limparImagemSeNaoUtilizada(imagemUrl: string): Promise<void> {
+    try {
+      const [eventosComImagem, usuariosComImagem] = await Promise.all([
+        this.prisma.evento.count({ where: { imagemUrl } }),
+        this.prisma.usuario.count({ where: { fotoPerfilUrl: imagemUrl } }),
+      ]);
+
+      if (eventosComImagem === 0 && usuariosComImagem === 0) {
+        await this.eventImageService.remover(imagemUrl);
+      }
+    } catch (error) {
+      const motivo = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Não foi possível concluir a limpeza da imagem de perfil ${imagemUrl}: ${motivo}`,
+      );
+    }
+  }
+
   private tratarErroPrisma(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
-        throw new ConflictException('E-mail já cadastrado');
+        throw new ConflictException('E-mail já cadastrado.');
       }
 
       if (error.code === 'P2025') {

@@ -25,15 +25,18 @@ enum PrecisaoLocalizacao {
 }
 
 model Usuario {
-  id           Int         @id @default(autoincrement())
-  nome         String
-  email        String      @unique
-  senha        String
-  eventos      Evento[]
-  tipo         TipoUsuario @default(VISITANTE)
-  tokenVersion Int         @default(0)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id              Int         @id @default(autoincrement())
+  nome            String
+  email           String      @unique
+  senha           String
+  eventos         Evento[]
+  tipo            TipoUsuario @default(VISITANTE)
+  tokenVersion    Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  cidadePreferida String?
+  interesses      String[]    @default([])
+  fotoPerfilUrl   String?
 
   favoritos   Favorito[]
   comentarios Comentario[]

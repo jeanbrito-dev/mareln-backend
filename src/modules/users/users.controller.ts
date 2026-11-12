@@ -1,5 +1,5 @@
-
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,10 +8,15 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import type { Request } from 'express';
 
 import { TipoUsuario } from '../../generated/prisma/client.js';
@@ -28,6 +33,8 @@ type AuthRequest = Request & {
   user: JwtPayload;
 };
 
+const TIPOS_DE_IMAGEM = ['image/jpeg', 'image/png', 'image/webp'];
+
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard)
 export class UsuariosController {
@@ -38,6 +45,41 @@ export class UsuariosController {
   @UseGuards(RolesGuard)
   findAll() {
     return this.usuariosService.findAll();
+  }
+
+  @Post('me/foto')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+        files: 1,
+      },
+      fileFilter: (_req, arquivo, callback) => {
+        if (!TIPOS_DE_IMAGEM.includes(arquivo.mimetype)) {
+          callback(
+            new BadRequestException(
+              'Formato não permitido. Envie JPEG, PNG ou WebP.',
+            ),
+            false,
+          );
+          return;
+        }
+
+        callback(null, true);
+      },
+    }),
+  )
+  enviarFotoPerfil(
+    @Req() req: AuthRequest,
+    @UploadedFile() arquivo: Express.Multer.File,
+  ) {
+    return this.usuariosService.salvarFotoPerfil(req.user.sub, arquivo);
+  }
+
+  @Delete('me/foto')
+  removerFotoPerfil(@Req() req: AuthRequest) {
+    return this.usuariosService.removerFotoPerfil(req.user.sub);
   }
 
   // Alteração da própria senha.
@@ -59,7 +101,6 @@ export class UsuariosController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     this.validarAcesso(req.user, id);
-
     return this.usuariosService.findOne(id);
   }
 
@@ -70,7 +111,6 @@ export class UsuariosController {
     @Body() dto: UpdateUsuarioDto,
   ) {
     this.validarAcesso(req.user, id);
-
     return this.usuariosService.update(id, dto);
   }
 
