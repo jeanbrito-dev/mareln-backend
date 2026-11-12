@@ -18,13 +18,15 @@ COPY nest-cli.json ./
 COPY src ./src
 RUN npm run build
 
-
 FROM dependencies AS migrations
 
 ENV NODE_ENV=production
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+
+# Reutiliza o Prisma Client JavaScript compilado pelo NestJS.
+COPY --from=build /app/dist ./dist
 
 CMD ["npm", "run", "prisma:migrate:deploy"]
 

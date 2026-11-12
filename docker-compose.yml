@@ -27,6 +27,7 @@ services:
       target: migrations
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-mareln}:${POSTGRES_PASSWORD:-1234}@db:5432/${POSTGRES_DB:-mareln}?schema=public
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:?Defina SEED_DEMO_PASSWORD no arquivo .env}
     depends_on:
       db:
         condition: service_healthy
