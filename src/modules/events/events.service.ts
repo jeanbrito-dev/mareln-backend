@@ -16,7 +16,7 @@ import type { AtualizarEventoDto } from './dto/update-event.dto.js';
 
 @Injectable()
 export class EventosService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async criar(usuarioId: number, dados: CriarEventoDto) {
     const usuario = await this.prisma.usuario.findUnique({
@@ -117,7 +117,7 @@ export class EventosService {
     });
   }
 
-  // Consulta privada: todos os eventos do usuário autenticado.
+  // Consulta privada: eventos do usuário autenticado.
   async listarMeus(usuarioId: number) {
     return this.prisma.evento.findMany({
       where: {
@@ -191,7 +191,8 @@ export class EventosService {
       (dados.cidade !== undefined &&
         dados.cidade !== evento.cidade);
 
-    // Evita manter coordenadas antigas quando o endereço muda.
+    // Se o endereço mudar sem novas coordenadas,
+    // as coordenadas antigas são removidas.
     const limparCoordenadas =
       localMudou && !coordenadasFornecidas;
 
@@ -242,6 +243,33 @@ export class EventosService {
       );
     }
 
+    const dataFinal =
+      dados.data !== undefined
+        ? new Date(dados.data)
+        : evento.data;
+
+    const imagemUrlFinal =
+      dados.imagemUrl !== undefined
+        ? dados.imagemUrl
+        : evento.imagemUrl;
+
+    // Verifica se realmente houve alguma alteração.
+    const houveAlteracao =
+      (dados.titulo !== undefined &&
+        dados.titulo !== evento.titulo) ||
+      (dados.descricao !== undefined &&
+        dados.descricao !== evento.descricao) ||
+      dataFinal.getTime() !== evento.data.getTime() ||
+      (dados.local !== undefined &&
+        dados.local !== evento.local) ||
+      cidadeFinal !== evento.cidade ||
+      latitudeFinal !== evento.latitude ||
+      longitudeFinal !== evento.longitude ||
+      precisaoFinal !== evento.precisaoLocalizacao ||
+      (dados.categoriaId !== undefined &&
+        dados.categoriaId !== evento.categoriaId) ||
+      imagemUrlFinal !== evento.imagemUrl;
+
     try {
       return await this.prisma.evento.update({
         where: { id },
@@ -249,18 +277,23 @@ export class EventosService {
           ...(dados.imagemUrl !== undefined && {
             imagemUrl: dados.imagemUrl,
           }),
+
           ...(dados.titulo !== undefined && {
             titulo: dados.titulo,
           }),
+
           ...(dados.descricao !== undefined && {
             descricao: dados.descricao,
           }),
+
           ...(dados.data !== undefined && {
-            data: new Date(dados.data),
+            data: dataFinal,
           }),
+
           ...(dados.local !== undefined && {
             local: dados.local,
           }),
+
           ...(dados.categoriaId !== undefined && {
             categoriaId: dados.categoriaId,
           }),
@@ -278,6 +311,13 @@ export class EventosService {
             longitude: null,
             precisaoLocalizacao: null,
           }),
+
+          // Alterações feitas pelo divulgador precisam
+          // passar novamente pela moderação.
+          ...(tipoUsuario === 'DIVULGADOR' &&
+            houveAlteracao && {
+              status: 'PENDENTE',
+            }),
         },
       });
     } catch (erro) {
@@ -325,11 +365,17 @@ export class EventosService {
       select: {
         id: true,
         usuarioId: true,
+        titulo: true,
+        descricao: true,
+        data: true,
         local: true,
         cidade: true,
         latitude: true,
         longitude: true,
         precisaoLocalizacao: true,
+        categoriaId: true,
+        imagemUrl: true,
+        status: true,
       },
     });
 
