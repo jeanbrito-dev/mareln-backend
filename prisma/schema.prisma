@@ -25,18 +25,19 @@ enum PrecisaoLocalizacao {
 }
 
 model Usuario {
-  id              Int         @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   nome            String
-  email           String      @unique
+  email           String          @unique
   senha           String
   eventos         Evento[]
-  tipo            TipoUsuario @default(VISITANTE)
-  tokenVersion    Int         @default(0)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  tipo            TipoUsuario     @default(VISITANTE)
+  tokenVersion    Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   cidadePreferida String?
-  interesses      String[]    @default([])
+  interesses      String[]        @default([])
   fotoPerfilUrl   String?
+  eventosMarcados EventoMarcado[]
 
   favoritos   Favorito[]
   comentarios Comentario[]
@@ -61,6 +62,7 @@ model Evento {
   categoria           Categoria?           @relation(fields: [categoriaId], references: [id])
   criadoEm            DateTime             @default(now())
   atualizadoEm        DateTime             @updatedAt
+  eventosMarcados     EventoMarcado[]
 
   favoritos   Favorito[]
   comentarios Comentario[]
@@ -109,4 +111,17 @@ model Avaliacao {
   evento  Evento  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, eventoId])
+}
+
+model EventoMarcado {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  eventoId  Int
+  criadoEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  evento  Evento  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, eventoId])
+  @@index([eventoId])
 }
