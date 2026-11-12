@@ -1,9 +1,11 @@
+
 import {
   Injectable,
   NotFoundException,
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
+
 import type { CommentDto } from './dto/comment.dto.js';
 import type { RatingDto } from './dto/rating.dto.js';
 
@@ -13,7 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 export class InteractionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-//  CRUD de Favoritos
+  // CRUD de Favoritos
 
   async createFavorite(userId: number, eventId: number) {
     const user = await this.prisma.usuario.findUnique({
@@ -85,7 +87,82 @@ export class InteractionsService {
     });
   }
 
-//   CRUD de Comentários
+  // CRUD de Eventos Marcados
+
+  async createMarkedEvent(userId: number, eventId: number) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    const event = await this.prisma.evento.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
+
+    const markedEvent = await this.prisma.eventoMarcado.findUnique({
+      where: {
+        usuarioId_eventoId: {
+          usuarioId: userId,
+          eventoId: eventId,
+        },
+      },
+    });
+
+    if (markedEvent) {
+      throw new ConflictException('Evento já está marcado.');
+    }
+
+    return this.prisma.eventoMarcado.create({
+      data: {
+        usuarioId: userId,
+        eventoId: eventId,
+      },
+    });
+  }
+
+  async removeMarkedEvent(userId: number, eventId: number) {
+    const markedEvent = await this.prisma.eventoMarcado.findUnique({
+      where: {
+        usuarioId_eventoId: {
+          usuarioId: userId,
+          eventoId: eventId,
+        },
+      },
+    });
+
+    if (!markedEvent) {
+      throw new NotFoundException('Evento marcado não encontrado.');
+    }
+
+    await this.prisma.eventoMarcado.delete({
+      where: { id: markedEvent.id },
+    });
+
+    return {
+      mensagem: 'Evento desmarcado com sucesso.',
+    };
+  }
+
+  async listMarkedEvents(userId: number) {
+    return this.prisma.eventoMarcado.findMany({
+      where: { usuarioId: userId },
+      include: {
+        evento: true,
+      },
+      orderBy: {
+        criadoEm: 'desc',
+      },
+    });
+  }
+
+  // CRUD de Comentários
 
   async createComment(userId: number, eventId: number, dto: CommentDto) {
     const event = await this.prisma.evento.findUnique({
@@ -163,7 +240,7 @@ export class InteractionsService {
     return { mensagem: 'Comentário excluído com sucesso.' };
   }
 
-//   CRUD de Avaliações
+  // CRUD de Avaliações
 
   async createRating(userId: number, eventId: number, dto: RatingDto) {
     const event = await this.prisma.evento.findUnique({

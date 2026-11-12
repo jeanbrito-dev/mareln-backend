@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Get,
@@ -60,6 +61,38 @@ export class InteractionsController {
   @UseGuards(JwtAuthGuard)
   listFavorites(@Req() req: AuthRequest) {
     return this.interactionsService.listFavorites(req.user.sub);
+  }
+
+  // CRUD de Eventos Marcados
+
+  @Post('marked-events/:eventId')
+  @UseGuards(JwtAuthGuard)
+  createMarkedEvent(
+    @Req() req: AuthRequest,
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ) {
+    return this.interactionsService.createMarkedEvent(
+      req.user.sub,
+      eventId,
+    );
+  }
+
+  @Delete('marked-events/:eventId')
+  @UseGuards(JwtAuthGuard)
+  removeMarkedEvent(
+    @Req() req: AuthRequest,
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ) {
+    return this.interactionsService.removeMarkedEvent(
+      req.user.sub,
+      eventId,
+    );
+  }
+
+  @Get('marked-events/me')
+  @UseGuards(JwtAuthGuard)
+  listMarkedEvents(@Req() req: AuthRequest) {
+    return this.interactionsService.listMarkedEvents(req.user.sub);
   }
 
   // CRUD de Comentários
