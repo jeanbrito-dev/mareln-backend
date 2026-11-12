@@ -1,9 +1,9 @@
-
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -13,10 +13,16 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import type { CriarEventoDto } from './dto/create-event.dto.js';
 import type { FiltroEventoDto } from './dto/filter-events.dto.js';
 import type { AtualizarEventoDto } from './dto/update-event.dto.js';
+import { EventImageService } from './event-image.service.js';
 
 @Injectable()
 export class EventosService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(EventosService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventImageService: EventImageService,
+  ) {}
 
   async criar(usuarioId: number, dados: CriarEventoDto) {
     const usuario = await this.prisma.usuario.findUnique({
@@ -271,7 +277,7 @@ export class EventosService {
       imagemUrlFinal !== evento.imagemUrl;
 
     try {
-      return await this.prisma.evento.update({
+      const eventoAtualizado = await this.prisma.evento.update({
         where: { id },
         data: {
           ...(dados.imagemUrl !== undefined && {
@@ -320,6 +326,17 @@ export class EventosService {
             }),
         },
       });
+
+      // Se a foto foi removida ou substituída, libera o arquivo antigo
+      // somente quando nenhum outro evento ainda o utiliza.
+      if (
+        evento.imagemUrl &&
+        evento.imagemUrl !== eventoAtualizado.imagemUrl
+      ) {
+        await this.limparImagemSeNaoUtilizada(evento.imagemUrl);
+      }
+
+      return eventoAtualizado;
     } catch (erro) {
       if (
         typeof erro === 'object' &&
@@ -353,9 +370,36 @@ export class EventosService {
       where: { id },
     });
 
+    // O registro é removido primeiro. A imagem só é apagada se não houver
+    // outro evento referenciando a mesma URL.
+    await this.limparImagemSeNaoUtilizada(evento.imagemUrl);
+
     return {
       mensagem: 'Evento excluído com sucesso.',
     };
+  }
+
+  private async limparImagemSeNaoUtilizada(
+    imagemUrl: string | null,
+  ): Promise<void> {
+    if (!imagemUrl) {
+      return;
+    }
+
+    try {
+      const quantidadeReferencias = await this.prisma.evento.count({
+        where: { imagemUrl },
+      });
+
+      if (quantidadeReferencias === 0) {
+        await this.eventImageService.remover(imagemUrl);
+      }
+    } catch (erro) {
+      const motivo = erro instanceof Error ? erro.message : String(erro);
+      this.logger.warn(
+        `Não foi possível concluir a limpeza da imagem ${imagemUrl}: ${motivo}`,
+      );
+    }
   }
 
   // Consulta interna para edição e exclusão de qualquer status.

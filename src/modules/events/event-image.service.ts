@@ -1,21 +1,24 @@
-
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   PayloadTooLargeException,
 } from '@nestjs/common';
 
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { Express } from 'express';
 
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
+const PADRAO_NOME_IMAGEM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$/;
 
 @Injectable()
 export class EventImageService {
+  private readonly logger = new Logger(EventImageService.name);
+
   async salvar(
     arquivo: Express.Multer.File,
   ): Promise<{ imagemUrl: string }> {
@@ -60,6 +63,38 @@ export class EventImageService {
     return {
       imagemUrl: `/uploads/${nomeArquivo}`,
     };
+  }
+
+  /**
+   * Remove somente imagens geradas pelo próprio serviço.
+   * URLs externas, caminhos inesperados e nomes fora do padrão são ignorados.
+   */
+  async remover(imagemUrl: string | null): Promise<void> {
+    if (!imagemUrl || !imagemUrl.startsWith('/uploads/')) {
+      return;
+    }
+
+    const nomeArquivo = imagemUrl.slice('/uploads/'.length);
+
+    if (!PADRAO_NOME_IMAGEM.test(nomeArquivo)) {
+      this.logger.warn(
+        `Imagem ignorada durante a limpeza por possuir caminho inválido: ${imagemUrl}`,
+      );
+      return;
+    }
+
+    const diretorio =
+      process.env.UPLOADS_DIR?.trim() ||
+      join(process.cwd(), 'uploads');
+
+    try {
+      await rm(join(diretorio, nomeArquivo), { force: true });
+    } catch (erro) {
+      const motivo = erro instanceof Error ? erro.message : String(erro);
+      this.logger.warn(
+        `Não foi possível remover a imagem ${nomeArquivo}: ${motivo}`,
+      );
+    }
   }
 
   private identificarTipo(
