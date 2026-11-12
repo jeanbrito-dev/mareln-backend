@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -24,6 +19,11 @@ enum StatusEvento {
   REJEITADO
 }
 
+enum PrecisaoLocalizacao {
+  EXATA
+  APROXIMADA
+}
+
 model Usuario {
   id           Int         @id @default(autoincrement())
   nome         String
@@ -41,18 +41,23 @@ model Usuario {
 }
 
 model Evento {
-  id           Int          @id @default(autoincrement())
-  titulo       String
-  descricao    String
-  data         DateTime
-  local        String
-  status       StatusEvento @default(PENDENTE)
-  usuarioId    Int
-  usuario      Usuario      @relation(fields: [usuarioId], references: [id])
-  categoriaId  Int?
-  categoria    Categoria?   @relation(fields: [categoriaId], references: [id])
-  criadoEm     DateTime     @default(now())
-  atualizadoEm DateTime     @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  titulo              String
+  descricao           String
+  data                DateTime
+  local               String
+  cidade              String?
+  latitude            Float?
+  longitude           Float?
+  precisaoLocalizacao PrecisaoLocalizacao?
+  imagemUrl           String?
+  status              StatusEvento         @default(PENDENTE)
+  usuarioId           Int
+  usuario             Usuario              @relation(fields: [usuarioId], references: [id])
+  categoriaId         Int?
+  categoria           Categoria?           @relation(fields: [categoriaId], references: [id])
+  criadoEm            DateTime             @default(now())
+  atualizadoEm        DateTime             @updatedAt
 
   favoritos   Favorito[]
   comentarios Comentario[]

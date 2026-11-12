@@ -1,3 +1,4 @@
+
 FROM node:22-alpine AS dependencies
 
 WORKDIR /app
@@ -38,6 +39,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
+
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 
 EXPOSE 3000
 

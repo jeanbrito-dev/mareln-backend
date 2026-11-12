@@ -1,5 +1,6 @@
 
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -36,12 +37,41 @@ export class EventosService {
       }
     }
 
+    const temLatitude = dados.latitude != null;
+    const temLongitude = dados.longitude != null;
+
+    if (temLatitude !== temLongitude) {
+      throw new BadRequestException(
+        'Informe latitude e longitude juntas.',
+      );
+    }
+
+    if (
+      temLatitude &&
+      (!dados.cidade || !dados.precisaoLocalizacao)
+    ) {
+      throw new BadRequestException(
+        'Informe cidade e precisão da localização junto com as coordenadas.',
+      );
+    }
+
+    if (!temLatitude && dados.precisaoLocalizacao) {
+      throw new BadRequestException(
+        'A precisão da localização exige coordenadas.',
+      );
+    }
+
     return this.prisma.evento.create({
       data: {
         titulo: dados.titulo,
         descricao: dados.descricao,
         data: new Date(dados.data),
         local: dados.local,
+        cidade: dados.cidade ?? null,
+        latitude: dados.latitude ?? null,
+        longitude: dados.longitude ?? null,
+        precisaoLocalizacao: dados.precisaoLocalizacao ?? null,
+        imagemUrl: dados.imagemUrl ?? null,
         usuarioId,
         categoriaId: dados.categoriaId,
       },
@@ -151,10 +181,74 @@ export class EventosService {
       }
     }
 
+    const coordenadasFornecidas =
+      dados.latitude !== undefined ||
+      dados.longitude !== undefined;
+
+    const localMudou =
+      (dados.local !== undefined &&
+        dados.local !== evento.local) ||
+      (dados.cidade !== undefined &&
+        dados.cidade !== evento.cidade);
+
+    // Evita manter coordenadas antigas quando o endereço muda.
+    const limparCoordenadas =
+      localMudou && !coordenadasFornecidas;
+
+    const latitudeFinal = limparCoordenadas
+      ? null
+      : dados.latitude !== undefined
+        ? dados.latitude
+        : evento.latitude;
+
+    const longitudeFinal = limparCoordenadas
+      ? null
+      : dados.longitude !== undefined
+        ? dados.longitude
+        : evento.longitude;
+
+    const cidadeFinal =
+      dados.cidade !== undefined
+        ? dados.cidade
+        : evento.cidade;
+
+    const precisaoFinal = limparCoordenadas
+      ? null
+      : dados.precisaoLocalizacao !== undefined
+        ? dados.precisaoLocalizacao
+        : evento.precisaoLocalizacao;
+
+    const temLatitude = latitudeFinal !== null;
+    const temLongitude = longitudeFinal !== null;
+
+    if (temLatitude !== temLongitude) {
+      throw new BadRequestException(
+        'Informe latitude e longitude juntas.',
+      );
+    }
+
+    if (
+      temLatitude &&
+      (!cidadeFinal || !precisaoFinal)
+    ) {
+      throw new BadRequestException(
+        'Informe cidade e precisão da localização junto com as coordenadas.',
+      );
+    }
+
+    if (!temLatitude && precisaoFinal !== null) {
+      throw new BadRequestException(
+        'A precisão da localização exige coordenadas.',
+      );
+    }
+
     try {
       return await this.prisma.evento.update({
         where: { id },
         data: {
+          ...(dados.imagemUrl !== undefined && {
+            imagemUrl: dados.imagemUrl,
+          }),
           ...(dados.titulo !== undefined && {
             titulo: dados.titulo,
           }),
@@ -169,6 +263,20 @@ export class EventosService {
           }),
           ...(dados.categoriaId !== undefined && {
             categoriaId: dados.categoriaId,
+          }),
+
+          ...(dados.cidade !== undefined && {
+            cidade: dados.cidade,
+          }),
+
+          latitude: latitudeFinal,
+          longitude: longitudeFinal,
+          precisaoLocalizacao: precisaoFinal,
+
+          ...(limparCoordenadas && {
+            latitude: null,
+            longitude: null,
+            precisaoLocalizacao: null,
           }),
         },
       });
@@ -217,6 +325,11 @@ export class EventosService {
       select: {
         id: true,
         usuarioId: true,
+        local: true,
+        cidade: true,
+        latitude: true,
+        longitude: true,
+        precisaoLocalizacao: true,
       },
     });
 
