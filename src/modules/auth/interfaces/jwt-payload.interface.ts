@@ -13,3 +13,10 @@ export interface RefreshTokenPayload {
   tokenType: 'refresh';
   tokenVersion: number;
 }
+
+export interface ResetPasswordPayload {
+  sub: number;
+  email: string;
+  tokenType: 'password_reset';
+  tokenVersion: number;
+}

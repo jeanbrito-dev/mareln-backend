@@ -7,6 +7,8 @@ import { AuthService } from './auth.service.js';
 import { Roles } from './decorators/roles.decorator.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
+import { RecuperarSenhaDto } from './dto/recuperar-senha.dto.js';
+import { RedefinirSenhaDto } from './dto/redefinir-senha.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import type { JwtPayload } from './interfaces/jwt-payload.interface.js';
@@ -30,6 +32,16 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto);
+  }
+
+  @Post(['recuperar-senha', 'forgot-password'])
+  recuperarSenha(@Body() dto: RecuperarSenhaDto) {
+    return this.authService.recuperarSenha(dto);
+  }
+
+  @Post(['redefinir-senha', 'reset-password'])
+  redefinirSenha(@Body() dto: RedefinirSenhaDto) {
+    return this.authService.redefinirSenha(dto);
   }
 
   @Get('me')
